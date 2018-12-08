@@ -1,3 +1,3 @@
 default:
-	javac Maximize.javac
+	javac Maximize.java
 	java Maximize

@@ -2,30 +2,30 @@ import java.io.*;
 import java.util.*;
 
 public class Maximize{
-    public static final String filename = "sgb-words.txt";  //make sure file exists and correct file name
-    
-    static Vector<String> allWords = new Vector<String>();
-
-    public static int verbose = 1;              //print extra details 0=final result only; 1=reasonable; 2=all
-    public static boolean incremental = true;   //print results as we go
-    public static boolean findAll = false;       //find all matches
-    public static int numTriesPerSlot = 3;      //number of words to try max per slot per iteration
-    public static int numHitsToRemember = 5;    //number of matching bins to remember
-
     public static void main(String[] args){
-        long readAllWordsTime = System.currentTimeMillis();
-        readAllWords();
-        readAllWordsTime = System.currentTimeMillis() - readAllWordsTime;
-
-        long getMaxTime = System.currentTimeMillis();
-        getMax();
-        getMaxTime = System.currentTimeMillis() - getMaxTime;
-
-        System.out.printf("-----\nReadAllWords() : %f s\n", (double)readAllWordsTime/1000);
-        System.out.printf("getMax() : %f s\n", (double)getMaxTime/1000);
+        Maximize max = new Maximize();
     }
 
-    private static void readAllWords() {
+    public static final String filename = "sgb-words.txt";  //make sure file exists and correct file name
+    
+    public static final int VERBOSE = 1;
+    public static final int WORDSIZE = 5;
+
+    public static final int SECONDS = 0;
+    public static final int MINUTES = 0;
+    public static final int HOURS = 0;
+
+    Vector<String> allWords;
+    boolean[][] compatible;
+
+    public Maximize(){
+        allWords = new Vector<String>();
+        readAllWords();
+        compatible = new boolean[allWords.size()][allWords.size()];
+        computeCollisions();
+    }
+
+    void readAllWords() {
         //read all words from file
         try {
             Scanner s = new Scanner(new File(filename));
@@ -33,7 +33,7 @@ public class Maximize{
                 allWords.add(s.nextLine());
             }
             s.close();
-            if(verbose > 0) { System.out.println("Read " + allWords.size() + " words from <" + filename + ">."); }
+            if(VERBOSE > 0) { System.out.println("Read " + allWords.size() + " words from <" + filename + ">."); }
         }
         catch(Exception e) {
             System.out.println("Unable to read file: " + e);
@@ -47,22 +47,6 @@ public class Maximize{
                 allWordsStats[i][(int)chars[i] - (int)'a']++;
             }
         } 
-        //print out the stats of the words
-        if(verbose > 1){
-            System.out.println("----- Stats for all words");
-            for(int i = 0; i < 26; i++){
-                StringBuilder s = new StringBuilder();
-                for(int j = 0; j < allWordsStats.length; j++){
-                    if(j == 0){
-                        s.append((char)(i + (int)'a'));
-                        s.append('\t');
-                    }
-                    s.append(allWordsStats[j][i]);
-                    s.append('\t');
-                }
-                System.out.println(s);
-            }
-        }
 
         //sort allWords based on allWordsStats
         //less commonly seen words go first
@@ -108,6 +92,20 @@ public class Maximize{
         Collections.sort(allWords, new myComparator(-1, allWordsStats));
     }
 
-    private static void getMax(){
+    void computeCollisions(){
+        for(int i = 0; i < allWords.size(); i++){
+            next:
+            for(int j = i + 1; j < allWords.size(); j++){
+                for(int k = 0; k < WORDSIZE; k++){
+                    if(allWords.get(i).charAt(k) == allWords.get(j).charAt(k)){
+                        continue next;
+                    }
+                }
+                compatible[i][j] = true;
+            }
+        }
+    }
+
+    void getMax(){
     }
 }
