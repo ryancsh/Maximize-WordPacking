@@ -106,6 +106,62 @@ public class Maximize{
         }
     }
 
+    static class Node{
+        static Node root;
+        boolean[][] compatible;
+
+        int value;
+        int current = 0;
+        int depth = 0;
+        boolean done = false;
+
+        Vector<Node> next = null;
+        Node previous;
+
+        Node(int value, Node previous){
+            if(value < 0){
+                root = this;
+            }
+
+            this.value = value;
+            this.previous = previous;
+        }
+
+        public Node(int value, Node previous, boolean[][] compatible){
+            this(value, previous);
+            this.compatible = compatible;
+        }
+
+        public Node getNext(int depth){
+            if(next == null){
+                next = new Vector<Node>();
+                for(int i = value + 1; i < compatible.length; i++){
+                    if(compatible[value][i]) next.add(new Node(i, this));
+                }
+            }
+            while(!done){
+                if(depth > next.size()){
+                    next = null;
+                    done = true;
+                    return null;
+                }
+                if(this.depth < depth){
+                    current = 0;
+                    this.depth = depth;
+                }
+                if(current > depth){
+                    return null;
+                }
+                Node result = next.get(current);
+                current++;
+                if(! result.done){
+                    return result;
+                }
+            }
+            return null;
+        }
+    }
+
     void getMax(){
     }
 }
