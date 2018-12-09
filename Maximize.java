@@ -127,16 +127,6 @@ public class Maximize{
         }
     }
 
-    static class nodeComparator implements Comparator<Node>{
-        static int[] sortingStats;
-
-        @Override
-        public int compare(Node n1, Node n2){
-            if (n1.value < 0 || n2.value < 0) throw new RuntimeException("wtf");
-            return sortingStats[n1.value] - sortingStats[n2.value];
-        }
-    }
-
     void computeCollisions(){
         int numTrue = 0;
         int numFalse = 0;
