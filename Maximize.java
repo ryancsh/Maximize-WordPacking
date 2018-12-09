@@ -8,21 +8,27 @@ public class Maximize{
 
     public static final String filename = "sgb-words.txt";  //make sure file exists and correct file name
     
-    public static final int VERBOSE = 1;
+    public static final int VERBOSE = 2;
     public static final int WORDSIZE = 5;
 
     public static final int SECONDS = 0;
     public static final int MINUTES = 0;
     public static final int HOURS = 0;
+    public static final int TIMETOLERANCE = 100;    // 100 = 1%
+
+    public static final int TARGET_INDEX = 16;
 
     Vector<String> allWords;
     boolean[][] compatible;
+    final long TIME;
 
     public Maximize(){
+        TIME = 1000 * (SECONDS + MINUTES * 60 + HOURS * 3600);
         allWords = new Vector<String>();
         readAllWords();
         compatible = new boolean[allWords.size()][allWords.size()];
         computeCollisions();
+        getMax();
     }
 
     void readAllWords() {
@@ -38,7 +44,7 @@ public class Maximize{
         catch(Exception e) {
             System.out.println("Unable to read file: " + e);
         }
-        
+
         //look at frequency for each letter at each position
         int[][] allWordsStats = new int[5][26];
         for(String s: allWords){
@@ -46,122 +52,214 @@ public class Maximize{
             for(int i = 0; i < allWordsStats.length; i++){
                 allWordsStats[i][(int)chars[i] - (int)'a']++;
             }
-        } 
-
-        //sort allWords based on allWordsStats
-        //less commonly seen words go first
-        //we can sort by a single position only
-        //negative position = sort using all letters
-        class myComparator implements Comparator<String>{
-            int position;
-            int[][] allWordsStats;
-
-            public myComparator(int position, int[][] allWordsStats){
-                this.position = position;
-                this.allWordsStats = allWordsStats;
-            }
-
-            @Override
-            public int compare(String s1, String s2){
-                int s1val = 0;
-                int s2val = 0;
-
-                if(position < 0){
-                    for(int i = 0; i<s1.length(); i++){
-                        s1val += allWordsStats[i][(int)(s1.charAt(i)) - (int)'a'];
-                        s2val += allWordsStats[i][(int)(s2.charAt(i)) - (int)'a'];
-                    }
-                }
-                else{
-                    s1val = allWordsStats[position][(int)(s2.charAt(position)) - (int)'a'];
-                    s1val = allWordsStats[position][(int)(s2.charAt(position)) - (int)'a'];
-                }
-
-                if(s1val < s2val) return -1;
-                else if(s1val > s2val) return 1;
-                else return 0;
-            }
         }
 
-        //do the actual sorting
-        Collections.sort(allWords, new myComparator(0, allWordsStats));
-        Collections.sort(allWords, new myComparator(1, allWordsStats));
-        Collections.sort(allWords, new myComparator(2, allWordsStats));
-        Collections.sort(allWords, new myComparator(3, allWordsStats));
-        Collections.sort(allWords, new myComparator(4, allWordsStats));
-        Collections.sort(allWords, new myComparator(-1, allWordsStats));
+        myComparator.allWordsStats = allWordsStats;
+
+        Collections.sort(allWords, new myComparator(0));
+        Collections.sort(allWords, new myComparator(1));
+        Collections.sort(allWords, new myComparator(2));
+        Collections.sort(allWords, new myComparator(3));
+        Collections.sort(allWords, new myComparator(4));
+        Collections.sort(allWords, new myComparator(-1));
+
+    }
+
+    static class myComparator implements Comparator<String>{
+        static int[][] allWordsStats;
+        int position;
+
+        public myComparator(int position){
+            this.position = position;
+        }
+
+        @Override
+        public int compare(String s1, String s2){
+            int s1val = 0;
+            int s2val = 0;
+
+            if(position < 0){
+                for(int i = 0; i<s1.length(); i++){
+                    s1val += allWordsStats[i][(int)(s1.charAt(i)) - (int)'a'];
+                    s2val += allWordsStats[i][(int)(s2.charAt(i)) - (int)'a'];
+                }
+            }
+            else{
+                s1val = allWordsStats[position][(int)(s2.charAt(position)) - (int)'a'];
+                s1val = allWordsStats[position][(int)(s2.charAt(position)) - (int)'a'];
+            }
+
+            if(s1val < s2val) return -1;
+            else if(s1val > s2val) return 1;
+            else return 0;
+        }
     }
 
     void computeCollisions(){
+        int numTrue = 0;
+        int numFalse = 0;
         for(int i = 0; i < allWords.size(); i++){
             next:
-            for(int j = i + 1; j < allWords.size(); j++){
+            for(int j = 0; j < allWords.size(); j++){
                 for(int k = 0; k < WORDSIZE; k++){
                     if(allWords.get(i).charAt(k) == allWords.get(j).charAt(k)){
+                        numFalse++;
                         continue next;
                     }
                 }
                 compatible[i][j] = true;
+                numTrue++;
             }
         }
+        if(VERBOSE > 1) System.out.println("Compatible [true:" + numTrue + " false:" + numFalse + "]");
     }
 
     static class Node{
         static Node root;
-        boolean[][] compatible;
+        static boolean[][] compatible;
+        static List<String> allWords;
 
-        int value;
-        int current = 0;
-        int depth = 0;
-        boolean done = false;
+        public final int value;
+        public Node previous;
 
-        Vector<Node> next = null;
-        Node previous;
-
+        boolean notInitialised = true;
+        LinkedList<Node> next;
+        boolean[] removed;
+        int size;
+        
         Node(int value, Node previous){
-            if(value < 0){
-                root = this;
-            }
-
             this.value = value;
             this.previous = previous;
+            next = new LinkedList<Node>();
         }
 
-        public Node(int value, Node previous, boolean[][] compatible){
-            this(value, previous);
+        public Node(int value, Node previous, boolean[][] compatible, List<String> allWords){
+            this(value,previous);
             this.compatible = compatible;
+            this.allWords = allWords;
+            this.root = this;
         }
 
-        public Node getNext(int depth){
-            if(next == null){
-                next = new Vector<Node>();
-                for(int i = value + 1; i < compatible.length; i++){
-                    if(compatible[value][i]) next.add(new Node(i, this));
+        void initialise(){
+            notInitialised = false;
+
+            if(this == root){
+                for(int i = 0; i < compatible.length; i++){
+                    next.add(new Node(i, this));
                 }
             }
-            while(!done){
-                if(depth > next.size()){
-                    next = null;
-                    done = true;
-                    return null;
+            else{
+                for(Node n: this.previous.next){
+                    if(compatible[value][n.value]) next.add(new Node(n.value, this));
                 }
-                if(this.depth < depth){
-                    current = 0;
-                    this.depth = depth;
-                }
-                if(current > depth){
-                    return null;
-                }
-                Node result = next.get(current);
-                current++;
-                if(! result.done){
-                    return result;
+            }
+            removed = new boolean[next.size()];
+            size = removed.length;
+        }
+
+        public Node next(){
+            if(notInitialised) initialise();
+            
+            for(int i = 0; i < removed.length; i++){
+                if(!removed[i]){
+                    removed[i] = true;
+                    size--;
+                    return next.get(i);
                 }
             }
             return null;
         }
+
+        public void removeNode(){
+            previous.removed[previous.next.indexOf(this)] = true;
+            next = null;
+            removed = null;
+            previous = null;
+        }
+
+        public int size(){
+            if(notInitialised) initialise();
+            return size;
+        }
     }
 
-    void getMax(){
+    public void getMax(){
+        Node rootNode = new Node(-1, null, compatible, allWords);
+        Node currentNode = rootNode;
+
+        int[] largestBin = new int[27];
+        int largestSize = TARGET_INDEX;
+        int currentSize = 0;
+
+        long timeInaccuracy = TIME / TIMETOLERANCE;
+        int timeLimit = (TIME == 0 ? Integer.MAX_VALUE : 1000);
+        long totalRounds = 0;
+        long startTime = System.currentTimeMillis();
+        long endTime = TIME + startTime;
+
+        timeLoop:
+        while(TIME == 0 || System.currentTimeMillis() > endTime){
+            innerTimeLoop:
+            for(int timeCount = 0; timeCount < timeLimit; timeCount++){
+                if(currentNode.size() == 0 || currentNode.size() <= largestSize - currentSize){
+                    if(currentNode == rootNode){
+                        //System.out.println(rootNode.size());
+                        break timeLoop;
+                    }
+                    else{
+                        if(currentSize > largestSize){
+                            largestSize = currentSize;
+                            saveBin(largestBin, currentNode);
+                            if(VERBOSE > 1){ printBin(largestBin, System.currentTimeMillis() - startTime); }
+                        }
+                        currentSize--;
+                        Node prevNode = currentNode.previous;
+                        currentNode.removeNode();
+                        currentNode = prevNode;
+                        continue innerTimeLoop;
+                    }
+                }
+                currentSize++;
+                currentNode = currentNode.next();
+            }
+            totalRounds += timeLimit;
+            long runTime = System.currentTimeMillis() - startTime;
+            timeLimit = (int)(totalRounds / runTime * timeInaccuracy);
+        }
+    }
+
+    void saveBin(int[] where, Node lastNode){
+        Node rootNode = Node.root;
+        int i = 0;
+        while(lastNode != rootNode){
+            where[i] = lastNode.value;
+            lastNode = lastNode.previous;
+            i++;
+        }
+        for(i = i; i < where.length; i++){
+            where[i] = -1;
+        }
+    }
+
+    void printBin(int[] bin, long timeMillis){
+        StringBuilder s2 = new StringBuilder();
+        int i;
+        for(i = 0; bin[i] != -1; i++){
+            s2.append(allWords.get(bin[i]));
+            s2.append(' ');
+        }
+
+        StringBuilder s = new StringBuilder();
+        s.append(i);
+        s.append(" [ ");
+        s.append(s2);
+        s.append("] ");
+        s.append(timeMillis / 1000);
+        s.append(" s");
+        System.out.println(s.toString());
+    }
+
+    void print(CharSequence c){
+        System.out.println(c);
     }
 }
