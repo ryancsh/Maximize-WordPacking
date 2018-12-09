@@ -6,29 +6,59 @@ public class Maximize{
         Maximize max = new Maximize();
     }
 
+    class Stopwatch{
+        long startTime;
+        long lapTime;
+        long endTime;
+
+        public void start(){
+            startTime = System.currentTimeMillis();
+            endTime = startTime;
+        }
+
+        public String lap(){
+            lapTime = endTime;
+            endTime = System.currentTimeMillis();
+            return(""+ (endTime - lapTime) / 1000 + " s");
+        }
+
+        public String all(){
+            endTime = System.currentTimeMillis();
+            return(""+ (endTime - startTime) / 1000 + " s");
+        }
+    }
+
     public static final String filename = "sgb-words.txt";  //make sure file exists and correct file name
     
     public static final int VERBOSE = 2;
     public static final int WORDSIZE = 5;
 
     public static final int SECONDS = 0;
-    public static final int MINUTES = 1;
+    public static final int MINUTES = 0;
     public static final int HOURS = 0;
     public static final int TIMETOLERANCE = 1;    // 100 => 1/100 => 1%
+    public static Stopwatch watch;
 
-    public static final int TARGET_INDEX = 16;
+    public static final int TARGET_INDEX = 0;
 
     Vector<String> allWords;
     boolean[][] compatible;
     final long TIME;
 
     public Maximize(){
+        watch = new Stopwatch();
         TIME = 1000 * (SECONDS + MINUTES * 60 + HOURS * 3600);
         allWords = new Vector<String>();
+        watch.start();
         readAllWords();
+        if(VERBOSE > 1)System.out.println("readallwords(): " + watch.lap());
         compatible = new boolean[allWords.size()][allWords.size()];
         computeCollisions();
+        if(VERBOSE > 1)System.out.println("computeCollisions(): " + watch.lap());
         getMax();
+        if(VERBOSE > 1)System.out.println("getMax(): " + watch.lap());
+
+        if(VERBOSE > 1)System.out.println("full run time: " + watch.lap());
     }
 
     void readAllWords() {
@@ -55,6 +85,7 @@ public class Maximize{
         }
 
         myComparator.allWordsStats = allWordsStats;
+        myComparator.allWords = allWords;
 
         Collections.sort(allWords, new myComparator(0));
         Collections.sort(allWords, new myComparator(1));
@@ -62,11 +93,12 @@ public class Maximize{
         Collections.sort(allWords, new myComparator(3));
         Collections.sort(allWords, new myComparator(4));
         Collections.sort(allWords, new myComparator(-1));
-
     }
 
     static class myComparator implements Comparator<String>{
         static int[][] allWordsStats;
+        static List<String> allWords;
+
         int position;
 
         public myComparator(int position){
@@ -92,6 +124,16 @@ public class Maximize{
             if(s1val < s2val) return -1;
             else if(s1val > s2val) return 1;
             else return 0;
+        }
+    }
+
+    static class nodeComparator implements Comparator<Node>{
+        static int[] sortingStats;
+
+        @Override
+        public int compare(Node n1, Node n2){
+            if (n1.value < 0 || n2.value < 0) throw new RuntimeException("wtf");
+            return sortingStats[n1.value] - sortingStats[n2.value];
         }
     }
 
@@ -123,7 +165,7 @@ public class Maximize{
         public Node previous;
 
         boolean notInitialised = true;
-        LinkedList<Node> next;
+        Vector<Node> next;
         boolean[] removed;
         int lastReturned;
         int size;
@@ -131,14 +173,14 @@ public class Maximize{
         Node(int value, Node previous){
             this.value = value;
             this.previous = previous;
-            next = new LinkedList<Node>();
+            next = new Vector<Node>();
         }
 
         public Node(int value, Node previous, boolean[][] compatible, List<String> allWords){
-            this(value,previous);
+            this(value, previous);
             this.compatible = compatible;
             this.allWords = allWords;
-            this.root = this;
+            root = this;
         }
 
         void initialise(){
@@ -151,7 +193,7 @@ public class Maximize{
             }
             else{
                 for(Node n: this.previous.next){
-                    if(compatible[value][n.value]) next.add(new Node(n.value, this));
+                    if(n.value > this.value && compatible[value][n.value]) next.add(new Node(n.value, this));
                 }
             }
             removed = new boolean[next.size()];
@@ -213,7 +255,7 @@ public class Maximize{
                         if(currentSize > largestSize){
                             largestSize = currentSize;
                             saveBin(largestBin, currentNode);
-                            if(VERBOSE > 1){ printBin(largestBin, System.currentTimeMillis() - startTime); }
+                            if(VERBOSE > 0){ printBin(largestBin, System.currentTimeMillis() - startTime); }
                         }
                         currentSize--;
                         Node prevNode = currentNode.previous;
