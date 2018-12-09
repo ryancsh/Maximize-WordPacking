@@ -157,7 +157,7 @@ public class Maximize{
         boolean notInitialised = true;
         Vector<Node> next;
         boolean[] removed;
-        int lastReturned;
+        int nextReturn;
         int size;
         
         Node(int value, Node previous){
@@ -188,17 +188,17 @@ public class Maximize{
             }
             removed = new boolean[next.size()];
             size = removed.length;
-            lastReturned = 0;
+            nextReturn = 0;
         }
 
         public Node next(){
             if(notInitialised) initialise();
             
-            for(int i = lastReturned; i < removed.length; i++){
+            for(int i = nextReturn; i < removed.length; i++){
                 if(!removed[i]){
                     removed[i] = true;
                     size--;
-                    lastReturned = i;
+                    nextReturn = i + 1;
                     return next.get(i);
                 }
             }
@@ -228,7 +228,6 @@ public class Maximize{
 
         long timeInaccuracy = TIME * 100 / TIMETOLERANCE;
         long timeLimit = (TIME == 0 ? Integer.MAX_VALUE : timeInaccuracy);
-        long totalRounds = 0;
         long startTime = System.currentTimeMillis();
         long endTime = TIME + startTime;
 
@@ -257,16 +256,6 @@ public class Maximize{
                 currentSize++;
                 currentNode = currentNode.next();
             }
-            totalRounds += timeLimit;
-        }
-
-        if(VERBOSE > 1){
-            StringBuilder s = new StringBuilder();
-            s.append("Time: ");
-            s.append((System.currentTimeMillis() - startTime)/1000);
-            s.append("s, Rounds: ");
-            s.append(totalRounds);
-            System.out.println(s.toString());
         }
     }
 
