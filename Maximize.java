@@ -12,9 +12,9 @@ public class Maximize{
     public static final int WORDSIZE = 5;
 
     public static final int SECONDS = 0;
-    public static final int MINUTES = 0;
+    public static final int MINUTES = 1;
     public static final int HOURS = 0;
-    public static final int TIMETOLERANCE = 100;    // 100 = 1%
+    public static final int TIMETOLERANCE = 1;    // 100 => 1/100 => 1%
 
     public static final int TARGET_INDEX = 16;
 
@@ -125,6 +125,7 @@ public class Maximize{
         boolean notInitialised = true;
         LinkedList<Node> next;
         boolean[] removed;
+        int lastReturned;
         int size;
         
         Node(int value, Node previous){
@@ -155,15 +156,17 @@ public class Maximize{
             }
             removed = new boolean[next.size()];
             size = removed.length;
+            lastReturned = 0;
         }
 
         public Node next(){
             if(notInitialised) initialise();
             
-            for(int i = 0; i < removed.length; i++){
+            for(int i = lastReturned; i < removed.length; i++){
                 if(!removed[i]){
                     removed[i] = true;
                     size--;
+                    lastReturned = i;
                     return next.get(i);
                 }
             }
@@ -191,19 +194,19 @@ public class Maximize{
         int largestSize = TARGET_INDEX;
         int currentSize = 0;
 
-        long timeInaccuracy = TIME / TIMETOLERANCE;
-        int timeLimit = (TIME == 0 ? Integer.MAX_VALUE : 1000);
+        long timeInaccuracy = TIME * 100 / TIMETOLERANCE;
+        long timeLimit = (TIME == 0 ? Integer.MAX_VALUE : timeInaccuracy);
         long totalRounds = 0;
         long startTime = System.currentTimeMillis();
         long endTime = TIME + startTime;
 
         timeLoop:
-        while(TIME == 0 || System.currentTimeMillis() > endTime){
+        while(TIME == 0 || System.currentTimeMillis() < endTime){
             innerTimeLoop:
-            for(int timeCount = 0; timeCount < timeLimit; timeCount++){
+            for(long timeCount = 0; timeCount < timeLimit;){
                 if(currentNode.size() == 0 || currentNode.size() <= largestSize - currentSize){
+                    timeCount++;
                     if(currentNode == rootNode){
-                        //System.out.println(rootNode.size());
                         break timeLoop;
                     }
                     else{
@@ -223,8 +226,15 @@ public class Maximize{
                 currentNode = currentNode.next();
             }
             totalRounds += timeLimit;
-            long runTime = System.currentTimeMillis() - startTime;
-            timeLimit = (int)(totalRounds / runTime * timeInaccuracy);
+        }
+
+        if(VERBOSE > 1){
+            StringBuilder s = new StringBuilder();
+            s.append("Time: ");
+            s.append((System.currentTimeMillis() - startTime)/1000);
+            s.append("s, Rounds: ");
+            s.append(totalRounds);
+            System.out.println(s.toString());
         }
     }
 
