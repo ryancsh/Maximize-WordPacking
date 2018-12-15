@@ -19,7 +19,7 @@ public class Maximize{
 
   public static final int OLD_GEN = 10;
   public static final int NEW_GEN = 2;
-  final int IMPROVEMENT_CYCLES = 100000;
+  final int IMPROVEMENT_CYCLES = 1_000_000;
 
   public static String[] readAllWords() {
     //read all words from file
@@ -47,14 +47,14 @@ public class Maximize{
 
     myComparator.allWordsStats = allWordsStats;
     myComparator.allWords = allWords;
-    /*
+    if(true){
     Collections.sort(allWords, new myComparator(0));
     Collections.sort(allWords, new myComparator(1));
     Collections.sort(allWords, new myComparator(2));
     Collections.sort(allWords, new myComparator(3));
     Collections.sort(allWords, new myComparator(4));
     Collections.sort(allWords, new myComparator(-1));
-    */
+    }
 
     String[] resultAllWords = new String[allWords.size()];
     for(int i = 0; i < allWords.size(); i++){
@@ -102,11 +102,11 @@ public class Maximize{
     //empty bins
     Bin[] bins = new Bin[NUM_GENS];
     for(int i = 0; i < NUM_GENS; i++){
-        bins[i] = new Bin();
+      bins[i] = new Bin();
     }
     //generate first bin
     for(int i = 0; i < allWords.length; i++){
-        bins[0].addWord(i);
+      bins[0].addWord(i);
     }
     //only bin we have so far is best bin
     Bin bestBin = new Bin();
@@ -120,30 +120,37 @@ public class Maximize{
 
         for(int j = OLD_GEN + i; j < bins.length; j += OLD_GEN){
           bins[j].copy(bins[i]);
-          bins[j].nextGeneration();
+          bins[j].nextGeneration(count);
         }
       }
       //remove copies
-      for(int i = 1; i < bins.length; i++){
-        for(int j = 0; j < i; j++){
-          if(bins[i].equals(bins[j])){
-            bins[i].clear();
-            break;
-          }
-        }
-      }
-      //sort
+
+      removeDuplicateBins(bins);
       Arrays.sort(bins);
+
       //check best bin
       if(bins[0].size() > bestBin.size()){
         count = 0;
         bestBin.copy(bins[0]);
         if(VERBOSE > 0) Util.printBin(bestBin);
-        for(int i = 0; i < bins.length; i++){
+        for(int i = OLD_GEN; i < bins.length; i++){
+          if(bins[i].size() == 0) break;
           if(bins[i].size() < bestBin.size()){
-            if(bins[i].size() == 0) break;
             bins[i].clear();
           }
+        }
+        Arrays.sort(bins);
+      }
+    }
+  }
+
+  //remove duplicates and sort
+  void removeDuplicateBins(Bin[] bins){
+    for(int i = 1; i < bins.length; i++){
+      for(int j = 0; j < i; j++){
+        if(bins[i].equals(bins[j])){
+          bins[i].clear();
+          break;
         }
       }
     }

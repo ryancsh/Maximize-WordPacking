@@ -3,10 +3,12 @@ import java.util.*;
 class Bin implements Comparable<Bin>{
   static String[] allWords;
   static boolean[][] notCompatible;
+  static int WORDSIZE;
+
   final static Random rng = new Random(123456789);
 
   public static void init(String[] allWords){
-    final int WORDSIZE = allWords[0].length();
+    WORDSIZE = allWords[0].length();
     Bin.allWords = allWords;
     Bin.notCompatible = new boolean[allWords.length][allWords.length];
     outer:
@@ -25,78 +27,73 @@ class Bin implements Comparable<Bin>{
 
   int[] words = new int[26];
   int size = 0;
-  boolean[] conflict = new boolean[allWords.length];
+  boolean[] inBin = new boolean[WORDSIZE * 26];
 
   public void copy(Bin other){
     this.size = other.size;
     for(int i = 0; i < size; i++){
       this.words[i] = other.words[i];
     }
-    for(int i = 0; i < conflict.length; i++){
-      this.conflict[i] = other.conflict[i];
+    for(int i = 0; i < inBin.length; i++){
+      this.inBin[i] = other.inBin[i];
     }
   }
 
-  public void nextGeneration(){
+  public void nextGeneration(int gen){
     //remove randomly
-    int toRemove = rng.nextInt(size);
-    removeIndex(toRemove);
+    int indexToRemove = rng.nextInt(size);
+    int wordToRemove = get(indexToRemove);
+    removeIndex(indexToRemove);
     //add everything that can be added
-    int start = rng.nextInt(conflict.length);
+    int start = rng.nextInt(allWords.length);
+    int limit = allWords.length - 1;
     for(int i = start + 1; i != start; i++){
-      if(i == conflict.length) i = 0;
-      if(i == toRemove) continue;
+      if(i == allWords.length){
+        i = -1;
+        continue;
+      }
+      if(i == wordToRemove) continue;
       addWord(i);
     }
-    addWord(toRemove);
+    addWord(wordToRemove);
   }
 
   public boolean compatible(int word){
-    return !conflict[word];
+    return(compatible(allWords[word]));
+  }
+
+  public boolean compatible(String toCheck){
+    for(int i = 0; i < WORDSIZE; i++){
+      if(inBin[i * 26 + toCheck.charAt(i) - 'a']) return false;
+    }
+    return true;
   }
 
   void removeIndex(int index){
-    int toRemove = words[index];
+    String toRemove = allWords[words[index]];
 
     for(int i = index + 1; i < size; i++){
       words[i - 1] = words[i];
     }
     size--;
 
-    for(int i = 0; i < conflict.length; i++){
-      conflict[i] = false;
-    }
-
-    for(int i = 0; i < size; i++){
-      for(int j = 0; j < conflict.length; j++){
-        if(notCompatible[words[i]][j]) conflict[j] = true;
-      }
+    for(int i = 0; i < WORDSIZE; i++){
+      inBin[i * 26 + toRemove.charAt(i) - 'a'] = false;
     }
   }
-  /*
-  void removeIndex(int index){
-    int toRemove = words[index];
 
-    for(int i = index + 1; i < size; i++){
-      words[i - 1] = words[i];
-    }
-    size--;
-
-    for(int i = 0; i < conflict.length; i++){
-      if(!notCompatible[toRemove][i]) conflict[i] = true;
-    }
+  public int get(int index){
+    return words[index];
   }
-  */
 
   public boolean addWord(int word){
-    if (conflict[word]) return false;
+    String toAdd = allWords[word];
+    if(!compatible(toAdd)) return false;
 
     words[size] = word;
     size++;
-    for(int i = 0; i < conflict.length; i++){
-      if(notCompatible[word][i]){
-        conflict[i] = true;
-      }
+    for(int i = 0; i < WORDSIZE; i++){
+      inBin[i * 26 + toAdd.charAt(i) - 'a'] = true;
     }
     return true;
   }
@@ -122,17 +119,16 @@ class Bin implements Comparable<Bin>{
 
   public boolean equals(Bin other){
     if(size != other.size) return false;
-    //potential optimization
-    for(int i = 0; i < conflict.length; i++){
-      if(conflict[i] != other.conflict[i]) return false;
+    for(int i = 0; i < inBin.length; i++){
+      if(inBin[i] != other.inBin[i]) return false;
     }
     return true;
   }
 
   public void clear(){
     size = 0;
-    for(int i = 0; i < conflict.length; i++){
-      conflict[i] = false;
+    for(int i = 0; i < inBin.length; i++){
+      inBin[i] = false;
     }
   }
 }

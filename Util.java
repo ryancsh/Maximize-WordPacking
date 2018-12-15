@@ -19,6 +19,13 @@ class Util{
     s.append(b);
     System.out.println(s);
   }
+
+  public static void printBins(String someText, Bin[] bins){
+    for(int i = 0; i < bins.length; i++){
+      Util.printBin(someText + "bin_number: " + i + " ", bins[i]);
+    }
+  }
+
   public static void printArr(Object[] arr){
     StringBuilder res = new StringBuilder();
     for(int i = 0; i < arr.length; i++){
@@ -45,6 +52,9 @@ class Util{
   }
   public static void print(int i){
     System.out.println(i);
+  }
+  public static void crash(String s){
+    throw new RuntimeException(s);
   }
 
   public static void findWord(String word){
