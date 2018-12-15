@@ -39,7 +39,7 @@ public class Maximize{
     public static final int TIMETOLERANCE = 1;    // 100 => 1/100 => 1%
     public static Stopwatch watch;
 
-    public static final int TARGET_INDEX = 0;
+    public static final int NUM_GENS = 5;
 
     Vector<String> allWords;
     boolean[][] compatible;
@@ -146,151 +146,78 @@ public class Maximize{
         if(VERBOSE > 1) System.out.println("Compatible [true:" + numTrue + " false:" + numFalse + "]");
     }
 
-    static class Node{
-        static Node root;
-        static boolean[][] compatible;
+    static class Bin{
         static List<String> allWords;
+        static boolean[][] compatible;
 
-        public final int value;
-        public Node previous;
+        int[] words = new int[26];
+        int size = 0;
 
-        boolean notInitialised = true;
-        Vector<Node> next;
-        boolean[] removed;
-        int nextReturn;
-        int size;
+        public Bin(){
+        }
         
-        Node(int value, Node previous){
-            this.value = value;
-            this.previous = previous;
-            next = new Vector<Node>();
-        }
-
-        public Node(int value, Node previous, boolean[][] compatible, List<String> allWords){
-            this(value, previous);
-            this.compatible = compatible;
-            this.allWords = allWords;
-            root = this;
-        }
-
-        void initialise(){
-            notInitialised = false;
-
-            if(this == root){
-                for(int i = 0; i < compatible.length; i++){
-                    next.add(new Node(i, this));
-                }
+        public Bin(Bin other){
+            size = other.size;
+            words = new int[26];
+            for(int i = 0; i < size; i++){
+                words[i] = other.words[i];
             }
-            else{
-                for(Node n: this.previous.next){
-                    if(n.value > this.value && compatible[value][n.value]) next.add(new Node(n.value, this));
-                }
-            }
-            removed = new boolean[next.size()];
-            size = removed.length;
-            nextReturn = 0;
         }
 
-        public Node next(){
-            if(notInitialised) initialise();
-            
-            for(int i = nextReturn; i < removed.length; i++){
-                if(!removed[i]){
-                    removed[i] = true;
+        public static void init(List<String> allWords, boolean[][] compatible){
+            Bin.allWords = allWords;
+            Bin.compatible = compatible;
+        }
+
+        public void forceAddWord(int word){
+            for(int i = 0; i < size; i++){
+                if(!compatible[words[i]][word]){
+                    for(int j = i; j < size - 1; j++){
+                        words[j] = words[j + 1];
+                    }
                     size--;
-                    nextReturn = i + 1;
-                    return next.get(i);
+                    i--;
                 }
             }
-            return null;
+
+            words[size] = word;
+            size++;
         }
 
-        public void removeNode(){
-            previous.removed[previous.next.indexOf(this)] = true;
-            next = null;
-            removed = null;
-            previous = null;
+        public boolean addWord(int word){
+            for(int i = 0; i < size; i++){
+                if(!compatible[word][words[i]]) return false;
+            }
+            words[size] = word;
+            size++;
+            return true;
         }
 
         public int size(){
-            if(notInitialised) initialise();
             return size;
+        }
+
+        public String toString(){
+            StringBuilder s = new StringBuilder();
+            s.append("[ ");
+            for(int i = 0; i < size; i++){
+                s.append(allWords.get(i));
+                s.append(" ");
+            }
+            s.append("]");
+            return s.toString();
         }
     }
 
     public void getMax(){
-        Node rootNode = new Node(-1, null, compatible, allWords);
-        Node currentNode = rootNode;
+        Bin.init(allWords, compatible);
+        Bin[] thisGen = new Bin[NUM_GENS];
+        Bin[] nextGen = new Bin[NUM_GENS];
 
-        int[] largestBin = new int[27];
-        int largestSize = TARGET_INDEX;
-        int currentSize = 0;
-
-        long timeInaccuracy = TIME * 100 / TIMETOLERANCE;
-        long timeLimit = (TIME == 0 ? Integer.MAX_VALUE : timeInaccuracy);
-        long startTime = System.currentTimeMillis();
-        long endTime = TIME + startTime;
-
-        timeLoop:
-        while(TIME == 0 || System.currentTimeMillis() < endTime){
-            innerTimeLoop:
-            for(long timeCount = 0; timeCount < timeLimit;){
-                if(currentNode.size() == 0 || currentNode.size() <= largestSize - currentSize){
-                    timeCount++;
-                    if(currentNode == rootNode){
-                        break timeLoop;
-                    }
-                    else{
-                        if(currentSize > largestSize){
-                            largestSize = currentSize;
-                            saveBin(largestBin, currentNode);
-                            if(VERBOSE > 0){ printBin(largestBin, System.currentTimeMillis() - startTime); }
-                        }
-                        currentSize--;
-                        Node prevNode = currentNode.previous;
-                        currentNode.removeNode();
-                        currentNode = prevNode;
-                        continue innerTimeLoop;
-                    }
-                }
-                currentSize++;
-                currentNode = currentNode.next();
-            }
+        //generate firstGen
+        thisGen[0] = new Bin();
+        for(int i = 0; i < allWords.size(); i++){
+            thisGen[0].addWord(i);
         }
-    }
-
-    void saveBin(int[] where, Node lastNode){
-        Node rootNode = Node.root;
-        int i = 0;
-        while(lastNode != rootNode){
-            where[i] = lastNode.value;
-            lastNode = lastNode.previous;
-            i++;
-        }
-        for(i = i; i < where.length; i++){
-            where[i] = -1;
-        }
-    }
-
-    void printBin(int[] bin, long timeMillis){
-        StringBuilder s2 = new StringBuilder();
-        int i;
-        for(i = 0; bin[i] != -1; i++){
-            s2.append(allWords.get(bin[i]));
-            s2.append(' ');
-        }
-
-        StringBuilder s = new StringBuilder();
-        s.append(i);
-        s.append(" [ ");
-        s.append(s2);
-        s.append("] ");
-        s.append(timeMillis / 1000);
-        s.append(" s");
-        System.out.println(s.toString());
-    }
-
-    void print(CharSequence c){
-        System.out.println(c);
     }
 }
