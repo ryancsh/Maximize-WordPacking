@@ -38,7 +38,8 @@ public class Maximize{
     public static final int HOURS = 0;
     public static final int TIMETOLERANCE = 1;    // 100 => 1/100 => 1%
 
-    public static final int NUM_GENS = 5;
+    public static final int OLD_GEN = 10;
+    public static final int NEW_GEN = 2;
 
     public Maximize(){
         final long TIME = 1000 * (SECONDS + MINUTES * 60 + HOURS * 3600);
@@ -233,29 +234,28 @@ public class Maximize{
     public void getMax(String[] allWords, boolean[][] compatible){
         Bin.init(allWords, compatible);
         Random rng = new Random(123456789);
+        final int NUM_GENS = OLD_GEN * NEW_GEN;
         
-        Bin[] thisGen = new Bin[NUM_GENS];
-        Bin[] nextGen = new Bin[NUM_GENS];
+        //empty bins
+        Bin[] bins = new Bin[NUM_GENS];
         for(int i = 0; i < NUM_GENS; i++){
-            thisGen[i] = new Bin();
-            nextGen[i] = new Bin();
+            bins[i] = new Bin();
         }
-        Bin bestBin = new Bin(thisGen[0]);
-
-        //generate firstGen
+        //generate first bin
         for(int i = 0; i < compatible.length; i++){
-            thisGen[0].addWord(i);
+            bins[0].addWord(i);
         }
-        for(int i = 1; i < NUM_GENS; i++){
-            thisGen[i].copy(thisGen[0]);
-            thisGen[i].forceAddWord(rng.nextInt(allWords.length));
-        }
-        
-        if(VERBOSE > 0) System.out.println(thisGen[0].size() + " " + thisGen[0]);
+        //only bin we have so far is best bin
+        Bin bestBin = new Bin(bins[0]);
+        if(VERBOSE > 0) System.out.println(" " + bestBin.size() + " " + bestBin);
 
-        printArr(thisGen);
-        Arrays.sort(thisGen);
-        printArr(thisGen);
+        while(true){
+            
+        }
+
+        printArr(bins);
+        Arrays.sort(bins);
+        printArr(bins);
     }
 
     void printArr(Bin[] t){
