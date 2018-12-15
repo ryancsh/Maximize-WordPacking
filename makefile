@@ -1,7 +1,7 @@
 default:
-	javac Maximize.java
+	javac Maximize.java Bin.java Stopwatch.java
 	java Maximize
 
 test:
-	javac Test.java
+	javac *.java
 	java Test
