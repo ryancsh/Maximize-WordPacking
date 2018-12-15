@@ -37,32 +37,29 @@ public class Maximize{
     public static final int MINUTES = 0;
     public static final int HOURS = 0;
     public static final int TIMETOLERANCE = 1;    // 100 => 1/100 => 1%
-    public static Stopwatch watch;
 
     public static final int NUM_GENS = 5;
 
-    Vector<String> allWords;
-    boolean[][] compatible;
-    final long TIME;
-
     public Maximize(){
-        watch = new Stopwatch();
-        TIME = 1000 * (SECONDS + MINUTES * 60 + HOURS * 3600);
-        allWords = new Vector<String>();
+        final long TIME = 1000 * (SECONDS + MINUTES * 60 + HOURS * 3600);
+        Stopwatch watch = new Stopwatch();
+        
         watch.start();
-        readAllWords();
+        final String[] allWords = readAllWords();
         if(VERBOSE > 1)System.out.println("readallwords(): " + watch.lap());
-        compatible = new boolean[allWords.size()][allWords.size()];
-        computeCollisions();
+
+        final boolean[][] compatible = computeCollisions(allWords);
         if(VERBOSE > 1)System.out.println("computeCollisions(): " + watch.lap());
-        getMax();
+
+        getMax(allWords, compatible);
         if(VERBOSE > 1)System.out.println("getMax(): " + watch.lap());
 
         if(VERBOSE > 1)System.out.println("full run time: " + watch.lap());
     }
 
-    void readAllWords() {
+    String[] readAllWords() {
         //read all words from file
+        Vector<String> allWords = new Vector<String>();
         try {
             Scanner s = new Scanner(new File(filename));
             while(s.hasNextLine()) {
@@ -93,6 +90,12 @@ public class Maximize{
         Collections.sort(allWords, new myComparator(3));
         Collections.sort(allWords, new myComparator(4));
         Collections.sort(allWords, new myComparator(-1));
+
+        String[] resultAllWords = new String[allWords.size()];
+        for(int i = 0; i < allWords.size(); i++){
+            resultAllWords[i] = allWords.get(i);
+        }
+        return resultAllWords;
     }
 
     static class myComparator implements Comparator<String>{
@@ -127,14 +130,18 @@ public class Maximize{
         }
     }
 
-    void computeCollisions(){
+    boolean[][] computeCollisions(String[] allWords){
         int numTrue = 0;
         int numFalse = 0;
-        for(int i = 0; i < allWords.size(); i++){
+        boolean[][] compatible = new boolean[allWords.length][allWords.length];
+
+        int wordsize = allWords[0].length();
+
+        for(int i = 0; i < allWords.length; i++){
             next:
-            for(int j = 0; j < allWords.size(); j++){
-                for(int k = 0; k < WORDSIZE; k++){
-                    if(allWords.get(i).charAt(k) == allWords.get(j).charAt(k)){
+            for(int j = 0; j < allWords.length; j++){
+                for(int k = 0; k < wordsize; k++){
+                    if(allWords[i].charAt(k) == allWords[j].charAt(k)){
                         numFalse++;
                         continue next;
                     }
@@ -144,10 +151,11 @@ public class Maximize{
             }
         }
         if(VERBOSE > 1) System.out.println("Compatible [true:" + numTrue + " false:" + numFalse + "]");
+        return compatible;
     }
 
-    static class Bin{
-        static List<String> allWords;
+    static class Bin implements Comparable<Bin>{
+        static String[] allWords;
         static boolean[][] compatible;
 
         int[] words = new int[26];
@@ -155,7 +163,7 @@ public class Maximize{
 
         public Bin(){
         }
-        
+
         public Bin(Bin other){
             size = other.size;
             words = new int[26];
@@ -164,16 +172,23 @@ public class Maximize{
             }
         }
 
-        public static void init(List<String> allWords, boolean[][] compatible){
+        public void copy(Bin other){
+            this.size = other.size;
+            for(int i = 0; i < size; i++){
+                this.words[i] = other.words[i];
+            }
+        }
+
+        public static void init(String[] allWords, boolean[][] compatible){
             Bin.allWords = allWords;
             Bin.compatible = compatible;
         }
 
         public void forceAddWord(int word){
             for(int i = 0; i < size; i++){
-                if(!compatible[words[i]][word]){
-                    for(int j = i; j < size - 1; j++){
-                        words[j] = words[j + 1];
+                if(!compatible[word][words[i]]){
+                    for(int j = i + 1; j < size; j++){
+                        words[j - 1] = words[j];
                     }
                     size--;
                     i--;
@@ -186,7 +201,9 @@ public class Maximize{
 
         public boolean addWord(int word){
             for(int i = 0; i < size; i++){
-                if(!compatible[word][words[i]]) return false;
+                if(!compatible[word][words[i]]){
+                    return false;
+                }
             }
             words[size] = word;
             size++;
@@ -201,23 +218,50 @@ public class Maximize{
             StringBuilder s = new StringBuilder();
             s.append("[ ");
             for(int i = 0; i < size; i++){
-                s.append(allWords.get(i));
+                s.append(allWords[words[i]]);
                 s.append(" ");
             }
             s.append("]");
             return s.toString();
         }
+
+        public int compareTo(Bin other){
+            return other.size - size;
+        }
     }
 
-    public void getMax(){
+    public void getMax(String[] allWords, boolean[][] compatible){
         Bin.init(allWords, compatible);
+        Random rng = new Random(123456789);
+        
         Bin[] thisGen = new Bin[NUM_GENS];
         Bin[] nextGen = new Bin[NUM_GENS];
+        for(int i = 0; i < NUM_GENS; i++){
+            thisGen[i] = new Bin();
+            nextGen[i] = new Bin();
+        }
+        Bin bestBin = new Bin(thisGen[0]);
 
         //generate firstGen
-        thisGen[0] = new Bin();
-        for(int i = 0; i < allWords.size(); i++){
+        for(int i = 0; i < compatible.length; i++){
             thisGen[0].addWord(i);
         }
+        for(int i = 1; i < NUM_GENS; i++){
+            thisGen[i].copy(thisGen[0]);
+            thisGen[i].forceAddWord(rng.nextInt(allWords.length));
+        }
+        
+        if(VERBOSE > 0) System.out.println(thisGen[0].size() + " " + thisGen[0]);
+
+        printArr(thisGen);
+        Arrays.sort(thisGen);
+        printArr(thisGen);
+    }
+
+    void printArr(Bin[] t){
+        for(int i = 0; i < t.length; i++){
+            System.out.println(t[i]);
+        }
+        System.out.println("---");
     }
 }
