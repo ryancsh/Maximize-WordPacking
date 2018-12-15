@@ -40,7 +40,6 @@ public class Maximize{
 
     public static final int OLD_GEN = 10;
     public static final int NEW_GEN = 2;
-    public static final int IMPROVEMENT_CYCLES = 10_000_000; //number of cycles of no improvement before terminating
 
     public Maximize(){
         final long TIME = 1000 * (SECONDS + MINUTES * 60 + HOURS * 3600);
@@ -248,6 +247,7 @@ public class Maximize{
         Bin.init(allWords, compatible);
         Random rng = new Random(123456789);
         final int NUM_GENS = OLD_GEN * NEW_GEN;
+        final int IMPROVEMENT_CYCLES = allWords.length > 32767 ? Integer.MAX_VALUE : allWords.length * allWords.length;
         
         //empty bins
         Bin[] bins = new Bin[NUM_GENS];
