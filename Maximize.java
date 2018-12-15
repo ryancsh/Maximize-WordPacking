@@ -40,6 +40,7 @@ public class Maximize{
 
     public static final int OLD_GEN = 10;
     public static final int NEW_GEN = 2;
+    public static final int IMPROVEMENT_CYCLES = 10_000_000; //number of cycles of no improvement before terminating
 
     public Maximize(){
         final long TIME = 1000 * (SECONDS + MINUTES * 60 + HOURS * 3600);
@@ -84,14 +85,12 @@ public class Maximize{
 
         myComparator.allWordsStats = allWordsStats;
         myComparator.allWords = allWords;
-
         Collections.sort(allWords, new myComparator(0));
         Collections.sort(allWords, new myComparator(1));
         Collections.sort(allWords, new myComparator(2));
         Collections.sort(allWords, new myComparator(3));
         Collections.sort(allWords, new myComparator(4));
         Collections.sort(allWords, new myComparator(-1));
-
         String[] resultAllWords = new String[allWords.size()];
         for(int i = 0; i < allWords.size(); i++){
             resultAllWords[i] = allWords.get(i);
@@ -229,6 +228,20 @@ public class Maximize{
         public int compareTo(Bin other){
             return other.size - size;
         }
+
+        public boolean equals(Bin other){
+            if(size != other.size) return false;
+            for(int i = 0; i < size; i++){
+                if(words[i] != other.words[i]){
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public void clear(){
+            size = 0;
+        }
     }
 
     public void getMax(String[] allWords, boolean[][] compatible){
@@ -247,15 +260,52 @@ public class Maximize{
         }
         //only bin we have so far is best bin
         Bin bestBin = new Bin(bins[0]);
-        if(VERBOSE > 0) System.out.println(" " + bestBin.size() + " " + bestBin);
+        if(VERBOSE > 0) printBin(bestBin);
 
-        while(true){
-            
+        int nextWord = 0;
+        for(int count = 0; count < IMPROVEMENT_CYCLES; count++){
+            //generate next generation
+            for(int i = 0; i < OLD_GEN; i++){
+                if(bins[i].size() == 0) break;
+
+                for(int j = OLD_GEN + i; j < bins.length; j += OLD_GEN){
+                    if(nextWord == allWords.length) nextWord = 0;
+                    bins[j].copy(bins[i]);
+                    bins[j].forceAddWord(nextWord++);
+                }
+            }
+            //remove copies
+            for(int i = 1; i < bins.length; i++){
+                for(int j = 0; j < i; j++){
+                    if(bins[i].equals(bins[j])){
+                        bins[i].clear();
+                        break;
+                    }
+                }
+            }
+            //sort
+            Arrays.sort(bins);
+            //check best bin
+            if(bins[0].size() > bestBin.size()){
+                count = 0;
+                bestBin.copy(bins[0]);
+                if(VERBOSE > 0) printBin(bestBin);
+                for(int i = 0; i < bins.length; i++){
+                    if(bins[i].size() < bestBin.size()){
+                        if(bins[i].size() == 0) break;
+                        bins[i].clear();
+                    }
+                }
+            }
         }
+    }
 
-        printArr(bins);
-        Arrays.sort(bins);
-        printArr(bins);
+    void printBin(Bin b){
+        StringBuilder s = new StringBuilder();
+        s.append(b.size());
+        s.append(' ');
+        s.append(b);
+        System.out.println(s);
     }
 
     void printArr(Bin[] t){
